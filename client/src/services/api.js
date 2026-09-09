@@ -1,0 +1,36 @@
+import axios from 'axios';
+
+const API = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor: Attach bearer token to outgoing requests
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response Interceptor: Catch 401 errors & clear invalid tokens
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Clear token if expired or unauthorized
+      localStorage.removeItem('token');
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default API;

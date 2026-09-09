@@ -1,0 +1,25 @@
+{
+  "name": "ai-mern-application",
+  "version": "1.0.0",
+  "description": "Production-grade MERN stack application with Google Gemini AI integration, JWT authentication, user profile management, prompt history persistence, and modern responsive UI.",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "npm start --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "node -e \"const { spawn } = require('child_process'); spawn('npm', ['start', '--prefix', 'server'], { stdio: 'inherit', shell: true }); spawn('npm', ['run', 'dev', '--prefix', 'client'], { stdio: 'inherit', shell: true });\"",
+    "build": "npm run build --prefix client",
+    "zip": "node create-zip.js"
+  },
+  "keywords": [
+    "mern",
+    "react",
+    "node",
+    "express",
+    "mongodb",
+    "gemini-ai",
+    "jwt-authentication"
+  ],
+  "author": "Antigravity AI",
+  "license": "MIT"
+}
