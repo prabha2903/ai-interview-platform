@@ -5,6 +5,15 @@ export const createInterview = async (payload) => {
   return response.data;
 };
 
+export const parseResumeFile = async (file) => {
+  const formData = new FormData();
+  formData.append('resume', file);
+  const response = await API.post('/interviews/parse-resume', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
 export const getInterviews = async () => {
   const response = await API.get('/interviews');
   return response.data;

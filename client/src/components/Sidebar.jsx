@@ -5,12 +5,9 @@ import { LayoutDashboard, Bot, History, User, Sparkles, Mic } from 'lucide-react
 const Sidebar = () => {
   return (
     <aside className="sidebar">
-      {/* Workspace Section Header Label */}
       <div style={{ padding: '0 8px 16px 8px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
         Workspace Navigation
       </div>
-      
-      {/* Navigation Route Arrays */}
       <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
         <LayoutDashboard size={18} />
         Dashboard Overview
@@ -32,25 +29,10 @@ const Sidebar = () => {
         Account Profile
       </NavLink>
 
-      {/* FIXED: Bottom Banner Wrapper using theme variables instead of dark-fused properties */}
-      <div style={{ 
-        marginTop: 'auto', 
-        padding: '16px', 
-        background: 'var(--primary-light)', 
-        borderRadius: 'var(--radius-md)', 
-        border: '1px solid var(--border-highlight)' 
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '8px', 
-          color: 'var(--primary)', 
-          fontWeight: 600, 
-          fontSize: '0.85rem', 
-          marginBottom: '4px' 
-        }}>
+      <div style={{ marginTop: 'auto', padding: '16px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#818cf8', fontWeight: 600, fontSize: '0.85rem', marginBottom: '4px' }}>
           <Sparkles size={16} />
-          Powered by Gemini 3.5
+          Powered by Gemini 2.5
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
           State-of-the-art AI reasoning engine.

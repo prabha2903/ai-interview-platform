@@ -34,7 +34,6 @@ const generateAI = async (req, res, next) => {
       historyItem,
     });
   } catch (error) {
-    console.error("AI Controller Error:", error.message);
     next(error);
   }
 };

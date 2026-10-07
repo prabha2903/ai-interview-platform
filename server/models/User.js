@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
@@ -27,6 +28,25 @@ const userSchema = new mongoose.Schema(
       minlength: [6, "Password must be at least 6 characters long"],
       select: false, // Do not return password by default in queries
     },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+      default: undefined,
+    },
+    resetPasswordExpire: {
+      type: Date,
+      select: false,
+      default: undefined,
+    },
+    // Bumped on password reset or explicit "log out everywhere". Every
+    // access token embeds the tokenVersion it was issued with; the auth
+    // middleware rejects a token whose version doesn't match the user's
+    // current value, giving us instant revocation without a token blacklist.
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -48,10 +68,24 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Generates a one-time password reset token, stores its SHA-256 hash on the
+// document (so the raw token never sits in the DB), and returns the raw
+// token so it can be emailed to the user. Expires in 15 minutes.
+userSchema.methods.getResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  this.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+
+  return resetToken;
+};
+
 // Ensure sensitive data is never returned in JSON
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpire;
   delete obj.__v;
   return obj;
 };

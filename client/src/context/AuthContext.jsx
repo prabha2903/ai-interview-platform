@@ -1,32 +1,35 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { loginUser, registerUser, getMe } from '../services/authService';
+import {
+  loginUser,
+  registerUser,
+  getMe,
+  logoutUser,
+  logoutAllSessions,
+} from '../services/authService';
 import { updateProfile } from '../services/userService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Check auth state on initial mount
+  // There's no token in JS to check anymore — the only way to know if a
+  // session is live is to ask the server, which validates the httpOnly
+  // cookie. api.js will transparently try a refresh if the access token
+  // has expired, so this single call covers "logged in with a fresh token",
+  // "logged in but access token expired", and "not logged in at all".
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        try {
-          const data = await getMe();
-          setUser(data.user);
-          setToken(storedToken);
-        } catch (err) {
-          console.error("Auth check failed:", err.message);
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-        }
+      try {
+        const data = await getMe();
+        setUser(data.user);
+      } catch (err) {
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
@@ -36,8 +39,6 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const data = await loginUser(email, password);
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
       setUser(data.user);
       return data;
     } catch (err) {
@@ -51,8 +52,6 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const data = await registerUser(name, email, password);
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
       setUser(data.user);
       return data;
     } catch (err) {
@@ -62,11 +61,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-    setError(null);
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      // Even if the server call fails (e.g. already-expired session), we
+      // still want to clear local state so the UI reflects "logged out".
+    } finally {
+      setUser(null);
+      setError(null);
+    }
+  };
+
+  // Revokes every session for this account, not just the current tab/device.
+  const logoutEverywhere = async () => {
+    try {
+      await logoutAllSessions();
+    } finally {
+      setUser(null);
+      setError(null);
+    }
   };
 
   const updateUserProfile = async (profileData) => {
@@ -91,13 +105,13 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
-        token,
         loading,
         error,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         register,
         logout,
+        logoutEverywhere,
         updateUserProfile,
         clearError,
       }}

@@ -97,7 +97,6 @@ const createInterview = async (req, res, next) => {
       interview,
     });
   } catch (error) {
-    console.error("Create Interview Error:", error.message);
     next(error);
   }
 };
@@ -107,15 +106,31 @@ const createInterview = async (req, res, next) => {
 // @access  Private
 const getInterviews = async (req, res, next) => {
   try {
-    const interviews = await Interview.find({ userId: req.user.id })
-      .select(
-        "targetRole interviewType difficulty questionCount status currentQuestionIndex finalReport.overallScore createdAt completedAt"
-      )
-      .sort({ createdAt: -1 });
+    // Bounded, defaulted pagination so this list can't grow unboundedly slow
+    // as a user's interview history grows. limit is capped at 50 regardless
+    // of what's requested, to prevent an accidental/abusive ?limit=100000.
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+
+    const query = { userId: req.user.id };
+
+    const [totalCount, interviews] = await Promise.all([
+      Interview.countDocuments(query),
+      Interview.find(query)
+        .select(
+          "targetRole interviewType difficulty questionCount status currentQuestionIndex finalReport.overallScore createdAt completedAt"
+        )
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+    ]);
 
     res.json({
       success: true,
       count: interviews.length,
+      totalCount,
+      page,
+      totalPages: Math.max(1, Math.ceil(totalCount / limit)),
       interviews,
     });
   } catch (error) {
@@ -237,7 +252,6 @@ const submitAnswer = async (req, res, next) => {
 
     res.json(payload);
   } catch (error) {
-    console.error("Submit Answer Error:", error.message);
     if (error.statusCode) res.status(error.statusCode);
     next(error);
   }
@@ -284,7 +298,6 @@ const completeInterview = async (req, res, next) => {
       interview,
     });
   } catch (error) {
-    console.error("Complete Interview Error:", error.message);
     if (error.statusCode) res.status(error.statusCode);
     next(error);
   }

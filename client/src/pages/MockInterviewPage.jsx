@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+import VoiceInputButton from '../components/VoiceInputButton';
 import { getInterview, submitInterviewAnswer, completeInterview } from '../services/interviewService';
 import { getDifficultyBadgeClass, getScoreClassName } from '../utils/scoreUtils';
 import {
@@ -92,7 +94,9 @@ const FeedbackCard = ({ evaluation, isFollowUp }) => {
       {evaluation.sampleAnswer && (
         <>
           <div className="feedback-section-title">Sample Answer</div>
-          <div className="suggested-answer-box">{evaluation.sampleAnswer}</div>
+          <div className="suggested-answer-box">
+            <MarkdownRenderer content={evaluation.sampleAnswer} />
+          </div>
         </>
       )}
     </div>
@@ -314,6 +318,10 @@ const MockInterviewPage = () => {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               disabled={submitting}
+            />
+            <VoiceInputButton
+              disabled={submitting}
+              onTranscript={(text) => setAnswer((prev) => (prev ? `${prev.trim()} ${text}` : text))}
             />
             <button type="submit" className="btn btn-primary" disabled={submitting || !answer.trim()} style={{ padding: '14px 20px', height: 'fit-content' }}>
               <Send size={18} />

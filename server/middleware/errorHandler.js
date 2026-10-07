@@ -1,3 +1,5 @@
+const logger = require("../utils/logger");
+
 const errorHandler = (err, req, res, next) => {
     let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     let message = err.message || "Internal Server Error";
@@ -21,6 +23,17 @@ const errorHandler = (err, req, res, next) => {
             .map((val) => val.message)
             .join(", ");
         statusCode = 400;
+    }
+
+    // Log every error centrally (with request context) so nothing gets lost
+    // to an uncaptured console.error in an individual controller. 5xx errors
+    // are logged at "error" level (paging/alerting-worthy); 4xx are "warn"
+    // since they're usually expected client mistakes, not bugs.
+    const logPayload = { err, method: req.method, path: req.originalUrl, statusCode };
+    if (statusCode >= 500) {
+        logger.error(logPayload, message);
+    } else {
+        logger.warn(logPayload, message);
     }
 
     res.status(statusCode).json({

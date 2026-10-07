@@ -1,261 +1,303 @@
-# Production-Ready AI-Powered MERN Web Application
+# AI Interview Platform (Production-Ready MERN + Gemini AI)
 
-A full-stack, production-grade MERN (MongoDB, Express.js, React.js, Node.js) web application integrated with **Google Gemini 2.5 Flash API**. Features secure JWT authentication, password hashing with bcryptjs, user profile management, interactive AI technical assistant workspace, and persistent prompt interaction history stored in MongoDB.
-
----
-
-## 1. Project Title
-**GeminiAI Technical Interview & Prompt Platform (MERN + AI)**
+A full-stack MERN (MongoDB, Express.js, React.js, Node.js) application integrated with **Google Gemini 2.5 Flash**. It combines a general-purpose AI technical assistant with a full **AI mock interview system** — resume + job description in, personalized questions, live evaluation, and a final performance report out — plus the security, testing, and deployment scaffolding expected of a production deliverable.
 
 ---
 
-## 2. Project Description
-This application provides software engineers and tech candidates with an interactive AI-powered coaching and query platform. Powered by Google Gemini AI, users can ask technical interview questions, request code reviews, explore system design concepts, and receive immediate actionable answers. All prompt interactions are securely saved to MongoDB for future reference and searchability.
+## 1. Feature Overview
+
+### Core platform
+- Cookie-based authentication (register/login/me) with bcrypt password hashing, short-lived access tokens, and rotating/revocable refresh tokens (see §11)
+- **Forgot / reset password** flow (time-limited, hashed reset tokens; emails are sent via SMTP if configured, or logged via the server logger for local/demo use)
+- Profile management (update name/email, change password with current-password verification)
+- Global Express error handling with structured, centralized logging
+
+### AI Assistant + History
+- Prompt-based AI assistant across categories (Interview Prep, Code Review, Technical Q&A, Career Advice, System Design)
+- Responses render as **Markdown** (headings, lists, tables, code blocks) instead of raw text
+- Persisted, searchable, filterable prompt history
+
+### AI Mock Interview System
+- Generate a personalized interview (5/10/15 questions, Technical/HR/Mixed, Easy/Medium/Hard) from a resume + job description
+- **Resume upload**: paste text, or upload a PDF / DOCX / TXT file — the server extracts the text for you
+- Chat-style mock interview with **voice input** (Web Speech API — click the mic and speak your answer) alongside typing
+- Per-answer AI evaluation (score, what went well, what was missing, how to improve, sample answer) with adaptive follow-up questions
+- Final AI-generated performance report: overall/technical/communication/relevance scores, strengths, weaknesses, missing concepts, recommended topics, and a personalized improvement plan
+- Interview history is paginated (`?page`, `?limit`, capped at 50/page) rather than returned in full every time
+
+### Production hardening
+- **Security**: Helmet security headers, rate limiting (tighter limits on auth, password reset, and AI-backed endpoints), server-side input validation (`express-validator`) on every route, a NoSQL-injection sanitizer, an explicit CORS origin allowlist, and httpOnly/secure/SameSite auth cookies (no tokens in `localStorage`)
+- **Resilience**: Gemini API calls are timeout-bounded and retried with exponential backoff on transient failures; Mongo connection attempts fail fast instead of hanging
+- **Observability**: structured JSON logging (pino), a liveness probe (`/healthz`) and a readiness probe (`/readyz`) that checks the DB connection
+- **Operability**: graceful shutdown on `SIGTERM`/`SIGINT` (drains in-flight requests before closing the DB connection), fail-fast startup validation of required env vars
+- **Testing**: Jest + Supertest on the backend (auth, interviews, AI, resume parsing), Vitest + React Testing Library on the frontend
+- **Deployment**: Dockerfiles for both services, an nginx-served frontend, `docker-compose.yml` wiring Mongo + API + client together (with healthchecks and required, non-defaulted secrets), and a GitHub Actions CI pipeline
 
 ---
 
-## 3. Features
-- **User Authentication**: User registration, login, logout with JWT bearer tokens & bcrypt password hashing.
-- **Secure Backend API Proxy**: Google Gemini API key is isolated on the Node.js backend to prevent client-side credential exposure.
-- **AI Workspace**: Interactive prompt interface with category selection (Interview Prep, Code Review, Technical Q&A, Career Advice, System Design), real-time loading state, and copy-to-clipboard functionality.
-- **AI Prompt History**: Persisted interaction history in MongoDB with category filtering, keyword searching, single-item deletion, and full history cleanup.
-- **User Profile Security**: View and edit user profile details (Name, Email) and change passwords with current password validation.
-- **Personal Dashboard**: Analytics summary showcasing total AI interactions, active JWT session status, member join date, and recent history feed.
-- **Modern Responsive Glassmorphic UI**: High-contrast, dark-mode design system with micro-animations, loading spinners, and dismissible notification alerts.
-- **Robust Error Handling**: Global Express error middleware handling invalid tokens, duplicate emails, Mongoose validation errors, and Gemini API rate limits.
+## 2. Technologies Used
+- **Frontend**: React 19, Vite, React Router 7, Axios, `react-markdown` + `remark-gfm`, Lucide icons, Vitest, React Testing Library
+- **Backend**: Node.js, Express 5, Mongoose, JWT (short-lived access tokens), rotating opaque refresh tokens, bcryptjs, Helmet, express-rate-limit, express-validator, cookie-parser, compression, pino/pino-http, multer, pdf-parse, mammoth, nodemailer, Jest, Supertest
+- **Database**: MongoDB
+- **AI Integration**: `@google/genai` (Gemini 2.5 Flash)
+- **Infra**: Docker, docker-compose, nginx, GitHub Actions
 
 ---
 
-## 4. Technologies Used
-- **Frontend**: React.js (v19), Vite, React Router (v7), Axios, Lucide React Icons, Vanilla CSS (Design System Tokens).
-- **Backend**: Node.js, Express.js (v5), Cors, Dotenv, JsonWebToken, BcryptJS.
-- **Database**: MongoDB & Mongoose ORM.
-- **AI Integration**: `@google/genai` (Google Gemini 2.5 Flash Model).
-
----
-
-## 5. Architecture
+## 3. Architecture
 
 ```text
 ┌─────────────────────────┐         HTTP/REST         ┌─────────────────────────┐
 │     React + Vite        │  ◄─────────────────────►  │     Node + Express      │
 │     Frontend UI         │   Authorization: Bearer   │       Backend API       │
-└─────────────────────────┘                           └────────────┬────────────┘
-                                                                   │
-                                           ┌───────────────────────┴───────────────────────┐
-                                           │                                               │
-                                           ▼                                               ▼
-                               ┌───────────────────────┐                       ┌───────────────────────┐
-                               │  Google Gemini API    │                       │   MongoDB Database    │
-                               │  (AI Generation)      │                       │  (Users & History)    │
-                               └───────────────────────┘                       └───────────────────────┘
+│  (nginx in production)  │                           │  helmet / rate-limit /  │
+└─────────────────────────┘                           │  validation middleware  │
+                                                        └────────────┬────────────┘
+                                                                     │
+                                             ┌───────────────────────┴───────────────────────┐
+                                             │                                               │
+                                             ▼                                               ▼
+                                 ┌───────────────────────┐                       ┌───────────────────────┐
+                                 │  Google Gemini API    │                       │   MongoDB Database    │
+                                 │  (AI Generation)      │                       │  (Users & Interviews) │
+                                 └───────────────────────┘                       └───────────────────────┘
 ```
 
 ---
 
-## 6. Folder Structure
+## 4. Folder Structure
 
 ```text
-AI-MERN-Application/
-├── package.json                   # Workspace scripts & dependencies
-├── .env.example                   # Master environment variable template
-├── .gitignore                     # Git rules for build outputs & secrets
-├── README.md                      # Complete project documentation
-├── create-zip.js                  # Automated zip packager script
+ai-interview-platform/
+├── docker-compose.yml              # Orchestrates mongo + server + client
+├── .github/workflows/ci.yml        # Lint / test / build on push & PR
+├── .env.example
+├── README.md
 │
-├── server/                        # Node.js + Express Backend
-│   ├── config/                    # Database connection setup
-│   ├── controllers/               # Auth, User, AI, and History logic
-│   ├── middleware/                # JWT auth and error handling
-│   ├── models/                    # Mongoose User & AIHistory schemas
-│   ├── routes/                    # Express REST route definitions
-│   ├── services/                  # Gemini AI API integration service
-│   ├── server.js                  # Express entry point
-│   ├── package.json               # Backend dependencies
-│   └── .env.example               # Backend env template
+├── server/                         # Node.js + Express backend
+│   ├── config/                     # DB connection (fail-fast timeout)
+│   ├── controllers/                # auth, user, ai, history, interview, resume
+│   ├── middleware/                 # auth, rateLimiter, validators, sanitizeRequest,
+│   │                                # uploadResume, errorHandler
+│   ├── models/                     # User, RefreshToken, AIHistory, Interview
+│   ├── routes/
+│   ├── services/                   # Gemini AI integration (timeout + retry/backoff)
+│   ├── utils/                      # tokenUtils, logger, validateEnv, sendEmail
+│   ├── tests/                      # Jest + Supertest suite
+│   ├── Dockerfile
+│   └── package.json
 │
-└── client/                        # React + Vite Frontend
+└── client/                         # React + Vite frontend
     ├── src/
-    │   ├── components/            # Navbar, Sidebar, ProtectedRoute, Modals
-    │   ├── context/               # AuthContext state management
-    │   ├── pages/                 # Home, Login, Register, Dashboard, AI, History, Profile, 404
-    │   ├── services/              # Axios API clients
-    │   ├── App.jsx                # Router & View Layout
-    │   ├── main.jsx               # React DOM render
-    │   └── index.css              # Glassmorphic Design System
-    ├── package.json               # Frontend dependencies
-    └── vite.config.js             # Vite proxy settings
+    │   ├── components/             # Navbar, Sidebar, MarkdownRenderer,
+    │   │                            # VoiceInputButton, modals, etc.
+    │   ├── context/                # AuthContext (cookie-based session)
+    │   ├── pages/                  # Home, Login, Register, Forgot/Reset Password,
+    │   │                            # Dashboard, AI Assistant, History, Profile,
+    │   │                            # Interview Prep / Detail / Mock / Report, 404
+    │   ├── services/                # Axios API clients (withCredentials + auto-refresh)
+    │   └── test/                    # Vitest setup
+    ├── Dockerfile
+    ├── nginx.conf
+    └── package.json
 ```
 
 ---
 
-## 7. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v9.0.0 or higher
-- **MongoDB**: Active MongoDB database URI (MongoDB Atlas or local `mongodb://localhost:27017`)
-- **Google Gemini API Key**: Valid API Key from [Google AI Studio](https://aistudio.google.com/)
+## 5. Prerequisites
+- Node.js v18+ and npm v9+ (or Docker, see §9)
+- MongoDB (local or Atlas)
+- A Google Gemini API key from [Google AI Studio](https://aistudio.google.com/)
 
 ---
 
-## 8. Installation
+## 6. Local Installation
 
-1. Clone or extract project repository:
 ```bash
 cd ai-interview-platform
+
+# Backend
+cd server && npm install && cd ..
+
+# Frontend
+cd client && npm install && cd ..
 ```
 
-2. Install backend dependencies:
+Copy `server/.env.example` to `server/.env` and fill in your values (see §7).
+
 ```bash
-cd server
-npm install
-cd ..
+# Terminal 1
+cd server && npm run dev
+
+# Terminal 2
+cd client && npm run dev
 ```
 
-3. Install frontend dependencies:
-```bash
-cd client
-npm install
-cd ..
-```
+Frontend: `http://localhost:5173` · Backend: `http://localhost:5000`
 
 ---
 
-## 9. Environment Variables
-Create a `.env` file inside the `server/` directory:
+## 7. Environment Variables (`server/.env`)
 
 ```env
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/ai_mern_db
+# --- Core ---
+MONGODB_URI=mongodb://localhost:27017/ai_mern_app
+# Must be a long, random, secret string in production (32+ chars) —
+# the server refuses to start in production with a shorter one.
+# Generate one with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 JWT_SECRET=your_super_secret_jwt_key_here
 GEMINI_API_KEY=your_google_gemini_api_key_here
 PORT=5000
+NODE_ENV=development
+
+# --- Auth token lifetimes ---
+ACCESS_TOKEN_TTL=15m   # short-lived JWT stored in an httpOnly cookie
+
+# --- Gemini call resilience ---
+GEMINI_TIMEOUT_MS=20000
+GEMINI_MAX_RETRIES=2
+
+# --- Mongo connection resilience ---
+MONGO_SERVER_SELECTION_TIMEOUT_MS=5000
+
+# --- CORS ---
+# Comma-separated list of origins allowed to call this API
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# --- Used to build links inside emails (e.g. password reset) ---
+CLIENT_URL=http://localhost:5173
+
+# --- Optional — if left blank, password-reset emails are logged
+# instead of sent, so the flow still works without SMTP. ---
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM="AI Interview Platform <no-reply@example.com>"
+
+# --- Logging ---
+LOG_LEVEL=info
+
+# --- Docker Compose only ---
+MONGO_ROOT_USER=admin
+MONGO_ROOT_PASSWORD=change_this_to_a_long_random_value
 ```
 
 ---
 
-## 10. MongoDB Setup
-- You can use local MongoDB (`mongodb://localhost:27017/ai_mern_app`) or MongoDB Atlas Cloud.
-- Ensure your connection URI string is placed in `server/.env`.
-- Collections (`users` and `aihistories`) will automatically be initialized upon first user registration and AI prompt generation.
+## 8. Running Tests
 
----
-
-## 11. Gemini API Setup
-1. Visit [Google AI Studio](https://aistudio.google.com/).
-2. Create an API key for your project.
-3. Paste key into `server/.env` under `GEMINI_API_KEY=`.
-
----
-
-## 12. Backend Setup
-To run backend independently:
 ```bash
-cd server
-npm start
+# Backend (Jest + Supertest, no live DB required — models are mocked)
+# Covers: auth (register/login/refresh/logout/logout-all/reset-password),
+# interviews (create/answer/follow-up/complete/delete/stats/pagination),
+# the AI assistant endpoint, and resume parsing (txt/docx, size/type limits).
+cd server && npm test
+
+# Frontend (Vitest + React Testing Library)
+# Covers: AuthContext session lifecycle, Markdown rendering, voice input,
+# score-formatting utilities.
+cd client && npm test
 ```
-Backend will start on `http://localhost:5000`.
 
 ---
 
-## 13. Frontend Setup
-To run frontend independently:
+## 9. Running with Docker
+
 ```bash
-cd client
-npm run dev
+# From the repo root
+export JWT_SECRET=some_long_random_secret_at_least_32_chars
+export GEMINI_API_KEY=your_google_gemini_api_key_here
+export MONGO_ROOT_USER=admin
+export MONGO_ROOT_PASSWORD=some_other_long_random_secret
+docker compose up --build
 ```
-Frontend dev server will start on `http://localhost:5173`.
+
+This starts three containers, each with a healthcheck:
+- `mongo` — MongoDB 7, authenticated (root user/pass required), data persisted in a named volume
+- `server` — the API on port `5000`, healthcheck against `/healthz`
+- `client` — the built frontend served by nginx on port `8080`, which proxies `/api/*` to `server`
+
+`docker compose up` will refuse to start if `JWT_SECRET`, `GEMINI_API_KEY`, `MONGO_ROOT_USER`, or `MONGO_ROOT_PASSWORD` aren't set — there are no insecure defaults.
+
+Visit `http://localhost:8080`.
+
+CI runs the same install → lint → test → build steps on every push/PR via `.github/workflows/ci.yml`.
 
 ---
 
-## 14. How to Run (Concurrent Dev Mode)
-From root workspace folder, execute:
-```bash
-npm run dev
-```
-Or start both `server` and `client` in separate terminals.
+## 10. REST API Reference
+
+### Health (unauthenticated)
+- `GET /healthz` — liveness probe (process is up)
+- `GET /readyz` — readiness probe (process up **and** DB reachable)
+
+### Auth (`/api/auth`)
+- `POST /register` — `{ name, email, password }` → sets httpOnly auth cookies
+- `POST /login` — `{ email, password }` → sets httpOnly auth cookies
+- `POST /refresh` — rotates the refresh token cookie for a new access+refresh pair
+- `POST /logout` — ends the current session only
+- `POST /logout-all` — ends every session for this account (protected)
+- `GET /me` — current user (protected)
+- `POST /forgot-password` — `{ email }` → sends/logs a reset link
+- `PUT /reset-password/:token` — `{ password }` → also revokes all existing sessions
+
+### Users (`/api/users`)
+- `GET /profile` (protected)
+- `PUT /profile` — `{ name?, email?, currentPassword?, newPassword? }` (protected)
+
+### AI Assistant (`/api/ai`)
+- `POST /generate` — `{ prompt, category }` (protected, rate-limited)
+
+### History (`/api/history`)
+- `GET /` — query params `category`, `search` (protected)
+- `DELETE /:id` (protected)
+- `DELETE /` — clear all (protected)
+
+### Interviews (`/api/interviews`) — all protected
+- `POST /parse-resume` — multipart file upload (`resume` field, PDF/DOCX/TXT) → extracted text
+- `POST /` — `{ resumeText, jobDescription, targetRole?, interviewType?, difficulty?, questionCount? }`
+- `GET /` — list sessions, paginated (`?page`, `?limit`, max 50/page)
+- `GET /stats` — dashboard aggregates
+- `GET /:id`
+- `POST /:id/answer` — `{ answer }`
+- `POST /:id/complete` — generates the final report
+- `DELETE /:id`
 
 ---
 
-## 15. REST API Documentation
+## 11. Authentication Flow
 
-### Auth APIs (`/api/auth`)
-- `POST /api/auth/register` - Create user account. Body: `{ name, email, password }`
-- `POST /api/auth/login` - Authenticate user. Body: `{ email, password }`
-- `GET /api/auth/me` - Get current session user. Header: `Authorization: Bearer <token>`
+Auth tokens live entirely in **httpOnly cookies** — JavaScript on the page (and therefore any XSS payload) can never read them, unlike a token stored in `localStorage`.
 
-### User APIs (`/api/users`)
-- `GET /api/users/profile` - Fetch user profile data (Protected)
-- `PUT /api/users/profile` - Update name, email, or password (Protected)
-
-### AI Service APIs (`/api/ai`)
-- `POST /api/ai/generate` - Generate Gemini AI answer & save history. Body: `{ prompt, category }` (Protected)
-
-### History APIs (`/api/history`)
-- `GET /api/history` - Fetch user's saved prompt history. Query params: `category`, `search` (Protected)
-- `DELETE /api/history/:id` - Delete single prompt record (Protected)
-- `DELETE /api/history` - Purge all prompt history for logged-in user (Protected)
+1. On register/login, the server issues two cookies:
+   - `accessToken` — a short-lived JWT (`ACCESS_TOKEN_TTL`, default 15 minutes), scoped to `/`.
+   - `refreshToken` — a long-lived (30-day), opaque, single-use random string, scoped only to `/api/auth/refresh`. Its SHA-256 hash — never the raw value — is stored server-side in the `RefreshToken` collection, which is what makes it revocable.
+2. The client (`client/src/services/api.js`) sends every request with `withCredentials: true`; the browser attaches the cookies automatically. There is no token in JS to attach manually.
+3. When an `accessToken` expires, the next request gets a `401`. An Axios response interceptor catches this, calls `POST /api/auth/refresh` once, and — if that succeeds — retries the original request transparently. The user never sees this happen.
+4. `POST /api/auth/refresh` **rotates** the refresh token: the old one is marked revoked and a brand-new one is issued. If an already-revoked (i.e. reused/stolen) refresh token is presented, the refresh is rejected outright.
+5. `AuthContext` establishes session state on load with a single `GET /api/auth/me` call (which benefits from the same silent-refresh behavior above).
+6. `POST /api/auth/logout` revokes just the current device's refresh token. `POST /api/auth/logout-all` bumps the user's `tokenVersion`, which instantly invalidates **every** outstanding access token (even ones that haven't expired yet) and revokes all refresh tokens — a full "log out everywhere."
+7. A password reset does the same `tokenVersion` bump + full refresh-token revocation automatically, so a compromised password can't leave old sessions alive.
+8. Forgotten passwords use a separate, short-lived (15-minute), single-use, hashed reset token — never the JWT.
 
 ---
 
-## 16. Authentication Flow
-1. User registers or logs in via frontend form.
-2. Backend verifies credentials and signs a JWT token using `JWT_SECRET` (valid 30 days).
-3. JWT token is returned to client and saved in `localStorage`.
-4. Centralized Axios interceptor (`api.js`) automatically attaches `Authorization: Bearer <token>` to protected endpoints.
-5. On app load, `AuthContext` verifies session against `GET /api/auth/me`.
+## 12. Common Errors and Solutions
+- **Server refuses to start / exits immediately in production**: check the startup log for a "Refusing to start" message — this means `MONGODB_URI` or `JWT_SECRET` is missing, or `JWT_SECRET` is under 32 characters. This is intentional fail-fast behavior, not a bug.
+- **MongoDB connection failure**: check `MONGODB_URI` credentials/IP allowlist (Atlas). The server will fail fast (`MONGO_SERVER_SELECTION_TIMEOUT_MS`, default 5s) rather than hanging.
+- **Gemini API error / empty response**: verify `GEMINI_API_KEY` is valid and has quota. Transient failures are retried automatically (`GEMINI_MAX_RETRIES`) before surfacing an error.
+- **401 Unauthorized right after logging in on a different origin**: in production, auth cookies require HTTPS (`secure: true`) and `sameSite: none` for cross-origin setups — make sure the client is served over HTTPS and `ALLOWED_ORIGINS` matches exactly.
+- **401 after being logged in for a while**: the access token (15 min) expired and the automatic refresh failed — usually because the refresh token (30 days) also expired, or a "log out everywhere" was triggered elsewhere. Log in again.
+- **CORS blocked**: add your frontend origin to `ALLOWED_ORIGINS` in `server/.env`.
+- **"No text extracted" on resume upload**: the file is likely a scanned/image-only PDF with no selectable text — paste the resume text instead.
+- **Voice input button doesn't appear**: the Web Speech API is currently Chrome/Edge only; the button simply doesn't render in unsupported browsers (Firefox/Safari) and typing still works.
 
 ---
 
-## 17. AI Integration Explanation
-All Gemini AI generation requests are executed server-side via `server/services/geminiService.js`. When a user submits a prompt, `POST /api/ai/generate` receives the text, passes it to Gemini 2.5 Flash with structured system instructions, receives the response, and automatically records the pair into `AIHistory` in MongoDB before sending the response to the client.
-
----
-
-## 18. Database Schema Explanation
-
-### User Schema (`server/models/User.js`)
-- `name`: String, required, trimmed.
-- `email`: String, required, unique, lowercase, trimmed.
-- `password`: String, required, minlength 6, `select: false` (never returned in API responses).
-- `timestamps`: `createdAt`, `updatedAt`.
-
-### AIHistory Schema (`server/models/AIHistory.js`)
-- `userId`: Schema.Types.ObjectId (ref `User`), required, indexed.
-- `prompt`: String, required, trimmed.
-- `response`: String, required.
-- `category`: String (enum: Interview Prep, Code Review, Technical Q&A, Career Advice, System Design).
-- `timestamps`: `createdAt`, `updatedAt`.
-
----
-
-## 19. Screens & Pages
-1. **Landing Page (`/`)**: Product showcase, features grid, architectural breakdown.
-2. **Login Page (`/login`)**: Account login with demo credentials prefill button.
-3. **Register Page (`/register`)**: User registration with real-time validation.
-4. **Dashboard Page (`/dashboard`)**: Personal statistics, session status, recent activity feed.
-5. **AI Assistant Page (`/ai-assistant`)**: Interactive prompt workspace with categories, prompt suggestions, and copy response.
-6. **AI History Page (`/history`)**: Saved history table/grid with search, category filtering, view detail modal, and delete options.
-7. **Profile Page (`/profile`)**: Update profile info and change account password securely.
-8. **404 Not Found Page (`*`)**: Custom fallback route for unmatched URLs.
-
----
-
-## 20. Testing Instructions
-- **Auth Test**: Register a new user, log out, log back in using registered email.
-- **Route Guard Test**: Try accessing `/dashboard` without logging in; verify redirection to `/login`.
-- **AI Prompt Test**: Navigate to `/ai-assistant`, pick a category chip, enter a technical prompt, and click "Generate Response". Verify response renders in Markdown format.
-- **History Persistence Test**: Navigate to `/history`, verify the prompt you generated appears at the top. Test single delete and clear all history.
-
----
-
-## 21. Common Errors and Solutions
-- **MongoDB Connection Failure**: Ensure `MONGODB_URI` in `server/.env` has correct credentials and IP access allowed on MongoDB Atlas.
-- **Gemini API Error / Empty Response**: Verify `GEMINI_API_KEY` in `server/.env` is valid and active.
-- **JWT Expired (401 Unauthorized)**: Tokens expire after 30 days. Log out and log back in to renew your session token.
-
----
-
-## 22. Future Improvements
-- Multi-turn conversational chat threads.
-- Voice input / speech-to-text prompt interface.
-- Code syntax highlighting theme selector.
-- PDF / Markdown export for AI interview study guides.
+## 13. Possible Future Improvements
+- Multi-turn conversational chat threads for the AI Assistant
+- PDF export of interview reports
+- Admin dashboard / usage analytics
+- Per-user AI usage quotas/cost tracking beyond the hourly rate limiter
+- Email verification on registration

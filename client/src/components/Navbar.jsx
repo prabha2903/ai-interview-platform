@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { 
-  GraduationCap, // 👈 Swapped back to GraduationCap icon
+  Sparkles, 
   LayoutDashboard, 
   Bot, 
   History, 
   User, 
   LogOut,
-  Mic,
-  Sun,   
-  Moon   
+  Mic
 } from 'lucide-react';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen] = useState(false);
 
@@ -28,39 +24,16 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-        {/* Brand Logo - Integrated GraduationCap with IntelliView name */}
+        {/* Brand Logo */}
         <Link to={isAuthenticated ? "/dashboard" : "/"} className="navbar-brand">
           <div className="navbar-brand-icon">
-            <GraduationCap size={22} /> {/* 👈 Rendered GraduationCap inside your logo slot */}
+            <Sparkles size={20} />
           </div>
-          <span className="gradient-text" style={{ fontWeight: '800' }}>Intelli</span>
-          <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>View</span>
+          <span className="gradient-text">GeminiAI</span> Platform
         </Link>
 
         {/* Desktop Links */}
         <div className="navbar-links" style={{ display: mobileMenuOpen ? 'flex' : undefined }}>
-          
-          {/* Theme Toggle Button */}
-          <button 
-            onClick={toggleTheme} 
-            className="btn btn-secondary" 
-            style={{ 
-              padding: '8px 12px', 
-              marginRight: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {theme === 'dark' ? (
-              <Sun size={18} color="#f59e0b" />
-            ) : (
-              <Moon size={18} color="#4f46e5" />
-            )}
-          </button>
-
           {isAuthenticated ? (
             <>
               <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>

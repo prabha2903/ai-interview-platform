@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import ErrorMessage from '../components/ErrorMessage';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { generateAIResponse } from '../services/aiService';
 import { 
   Bot, 
@@ -204,7 +205,7 @@ const AIAssistantPage = () => {
                 </div>
               ) : (
                 <div className="response-content">
-                  {response}
+                  <MarkdownRenderer content={response} />
                 </div>
               )}
             </div>

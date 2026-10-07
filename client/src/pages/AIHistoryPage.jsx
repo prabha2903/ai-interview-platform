@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import ConfirmModal from '../components/ConfirmModal';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { getHistory, deleteHistoryItem, clearHistory } from '../services/historyService';
 import { 
   History, 
@@ -242,7 +243,7 @@ const AIHistoryPage = () => {
               <div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Gemini AI Response:</div>
                 <div className="response-content" style={{ maxHeight: '350px', overflowY: 'auto', background: 'rgba(15, 23, 42, 0.8)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                  {selectedItem.response}
+                  <MarkdownRenderer content={selectedItem.response} />
                 </div>
               </div>
             </div>

@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmModal from '../components/ConfirmModal';
-import { createInterview, getInterviews, deleteInterview } from '../services/interviewService';
+import { createInterview, getInterviews, deleteInterview, parseResumeFile } from '../services/interviewService';
 import { getScoreClassName } from '../utils/scoreUtils';
 import {
   Sparkles,
@@ -17,6 +17,9 @@ import {
   Eye,
   ClipboardList,
   Inbox,
+  UploadCloud,
+  Loader2,
+  FileCheck2,
 } from 'lucide-react';
 
 const INTERVIEW_TYPES = ['Technical', 'HR', 'Mixed'];
@@ -36,6 +39,8 @@ const InterviewPrepPage = () => {
   const [questionCount, setQuestionCount] = useState(5);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [uploadedFileName, setUploadedFileName] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // Sessions list state
   const [sessions, setSessions] = useState([]);
@@ -88,6 +93,25 @@ const InterviewPrepPage = () => {
       setCreateError(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleResumeFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+
+    setUploading(true);
+    setCreateError(null);
+    try {
+      const data = await parseResumeFile(file);
+      setResumeText(data.resumeText);
+      setUploadedFileName(data.fileName);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to read that file. Please try a different one or paste your resume text instead.';
+      setCreateError(msg);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -147,13 +171,53 @@ const InterviewPrepPage = () => {
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <FileText size={16} color="var(--primary)" />
-                Your Resume (paste as text)
+                Your Resume
               </label>
+
+              <label
+                htmlFor="resume-file-input"
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  padding: '14px',
+                  marginBottom: '10px',
+                  cursor: uploading ? 'default' : 'pointer',
+                  borderStyle: 'dashed',
+                }}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 size={18} className="spin-icon" style={{ animation: 'spin 0.8s linear infinite' }} />
+                    Reading resume...
+                  </>
+                ) : uploadedFileName ? (
+                  <>
+                    <FileCheck2 size={18} color="var(--success)" /> {uploadedFileName} — click to replace
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={18} /> Upload PDF, DOCX, or TXT resume
+                  </>
+                )}
+              </label>
+              <input
+                id="resume-file-input"
+                type="file"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={handleResumeFileChange}
+                disabled={uploading}
+                style={{ display: 'none' }}
+              />
+
               <textarea
                 className="textarea-lg"
-                placeholder="Paste your resume content here - skills, experience, projects, technologies used, etc."
+                placeholder="...or paste your resume content here - skills, experience, projects, technologies used, etc."
                 value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
+                onChange={(e) => {
+                  setResumeText(e.target.value);
+                  if (uploadedFileName) setUploadedFileName(null);
+                }}
               />
             </div>
 

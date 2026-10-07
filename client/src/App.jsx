@@ -15,6 +15,8 @@ import InterviewPrepPage from './pages/InterviewPrepPage';
 import InterviewDetailPage from './pages/InterviewDetailPage';
 import MockInterviewPage from './pages/MockInterviewPage';
 import InterviewReportPage from './pages/InterviewReportPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import './App.css';
@@ -40,6 +42,22 @@ function App() {
             element={
               <PublicRoute>
                 <RegisterPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password/:token"
+            element={
+              <PublicRoute>
+                <ResetPasswordPage />
               </PublicRoute>
             }
           />
